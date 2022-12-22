@@ -1,0 +1,4 @@
+SQLAlchemy
+pymysql
+SQLAlchemy-serializer
+fake-useragent
