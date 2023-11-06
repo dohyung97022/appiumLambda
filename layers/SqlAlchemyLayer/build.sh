@@ -1,29 +1,23 @@
 echo Make sure to put the package names in requirements.txt
-echo Do you want to build python version 3.7? [y/n]
-read install3_7
-echo Do you want to build python version 3.8? [y/n]
-read install3_8
 
-layer_name=SqlAlchemyLayer
+LAYER_NAME=Tweety
 
-if [ "$install3_7" == "y" ]; then
-  echo installing 3.7
-  docker run -v "$PWD":/var/task "public.ecr.aws/sam/build-python3.7" /bin/sh -c "pip install -r requirements.txt -t python/lib/python3.7/site-packages/; exit"
-fi
+remove_library() {
+  rm -r python/lib
+}
 
-if [ "$install3_8" == "y" ]; then
-  echo installing 3.8
-  docker run -v "$PWD":/var/task "public.ecr.aws/sam/build-python3.8" /bin/sh -c "pip install -r requirements.txt -t python/lib/python3.8/site-packages/; exit"
-fi
+deploy_version() {
+  docker run -v "$PWD":/var/task "public.ecr.aws/sam/build-python$1" /bin/sh -c "pip install -r requirements.txt -t python/lib/python$1/site-packages/; exit"
+  zip -r python.zip python
+}
 
-zip -r python.zip python
+publish_aws() {
+  echo publishing to aws
+  aws lambda publish-layer-version --layer-name "$2" --description "" --zip-file fileb://./python.zip --compatible-runtimes $1
+}
 
-echo publishing to aws
-
-if [ "$install3_7" == "y" ] && [ "$install3_8" == "y" ]; then
-  aws lambda publish-layer-version --layer-name "$layer_name" --description "" --zip-file fileb://./python.zip --compatible-runtimes python3.7 python3.8
-elif [ "$install3_8" == "y" ]; then
-  aws lambda publish-layer-version --layer-name "$layer_name" --description "" --zip-file fileb://./python.zip --compatible-runtimes python3.8
-elif [ "$install3_7" == "y" ]; then
-  aws lambda publish-layer-version --layer-name "$layer_name" --description "" --zip-file fileb://./python.zip --compatible-runtimes python3.7
-fi
+remove_library
+deploy_version 3.7
+deploy_version 3.8
+deploy_version 3.9
+publish_aws "python3.7 python3.8 python3.9" ${LAYER_NAME}
